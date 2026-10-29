@@ -14,7 +14,11 @@ class AuthRemoteDataSource {
   }) async {
     final data = await _client.post(
       ApiConstants.loginPath,
-      data: {'username': username, 'password': password, 'expiresInMins': 60},
+      data: {
+        'username': username,
+        'password': password,
+        'expiresInMins': ApiConstants.sessionMinutes,
+      },
     );
 
     if (data is! Map<String, dynamic>) {

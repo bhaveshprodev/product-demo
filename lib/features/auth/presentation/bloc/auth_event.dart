@@ -24,3 +24,9 @@ final class LoginSubmitted extends AuthEvent {
 final class LogoutRequested extends AuthEvent {
   const LogoutRequested();
 }
+
+/// Emitted when the network layer could not renew the access token and the
+/// stored session has been discarded.
+final class SessionExpired extends AuthEvent {
+  const SessionExpired();
+}

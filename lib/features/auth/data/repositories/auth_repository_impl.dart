@@ -27,10 +27,12 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
 
-      // Persist the bearer token in the platform keychain/keystore. The user
-      // profile is cached alongside it so a cold start does not need a second
-      // round trip.
+      // Persist both tokens in the platform keychain/keystore. The refresh
+      // token lets the auth interceptor mint a new access token on a 401
+      // without asking for credentials again. The user profile is cached
+      // alongside them so a cold start does not need a second round trip.
       await _storage.writeToken(response.accessToken);
+      await _storage.writeRefreshToken(response.refreshToken);
       await _storage.writeUser(jsonEncode(response.user.toJson()));
 
       return Success(response.user.toEntity());

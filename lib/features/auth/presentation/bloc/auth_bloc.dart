@@ -1,17 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/network/session_expiry_notifier.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc(this._repository) : super(const AuthState()) {
+  AuthBloc(this._repository, {SessionExpiryNotifier? sessionExpiry})
+    : super(const AuthState()) {
+    _sessionExpirySubscription = sessionExpiry?.onExpired.listen((_) {
+      add(const SessionExpired());
+    });
     on<AuthCheckRequested>(_onCheckRequested);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
+    on<SessionExpired>(_onSessionExpired);
   }
 
   final AuthRepository _repository;
+  StreamSubscription<void>? _sessionExpirySubscription;
 
   Future<void> _onCheckRequested(
     AuthCheckRequested event,
@@ -93,5 +102,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         clearError: true,
       ),
     );
+  }
+
+  Future<void> _onSessionExpired(
+    SessionExpired event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state.status == AuthStatus.unauthenticated) return;
+    await _repository.logout();
+    emit(
+      state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        errorMessage: 'Your session expired. Please sign in again.',
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() async {
+    await _sessionExpirySubscription?.cancel();
+    return super.close();
   }
 }

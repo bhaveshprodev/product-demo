@@ -47,10 +47,14 @@ fvm flutter test
 
 - **Login** with `POST /auth/login`, form validation, inline API errors, loading
   state, password visibility toggle, and a pre-filled demo account.
-- **Secure session** — the token lives in platform secure storage
-  (Keychain/Keystore; encrypted browser storage on web), never in plain
-  `SharedPreferences`. Sessions are restored on cold start; sign-out clears the
-  token and returns to login.
+- **Secure session** — the access and refresh tokens live in platform secure
+  storage (Keychain/Keystore; encrypted browser storage on web), never in plain
+  `SharedPreferences`. Sessions are restored on cold start; sign-out clears
+  both tokens and returns to login.
+- **Transparent token renewal** — a `401` triggers a single `POST
+  /auth/refresh` using the stored refresh token. Parallel failures share that
+  one request, the original calls are replayed with the new access token, and a
+  rejected refresh token clears the session and returns to login.
 - **Product list** with skeleton loading, full-page error + retry, empty state,
   pull-to-refresh, and infinite pagination (`limit` / `skip`).
 - **Pagination resilience** — failed pages keep the already-loaded products and
@@ -109,11 +113,15 @@ Widgets ──events──▶ Bloc ──▶ Repository (domain contract)
   `UnauthorizedFailure`, …) and return `Success`/`FailureResult`. Blocs never
   catch transport exceptions, and widgets only render messages.
 - **Thin network layer.** `ApiClient` owns Dio configuration, bearer-token
-  injection and status-code mapping. Logging records method, path, status and
+  injection and status-code mapping. `AuthInterceptor` appends the access token
+  and, on `401`, refreshes once and replays the request; concurrent `401`s
+  await the same refresh (`AuthTokenRefresher`), so a burst of requests never
+  rotates the token more than once. Logging records method, path, status and
   duration only — never tokens, headers or bodies.
 - **Secure storage behind an interface.** `AuthStorage` is injected into the
-  repository and auth interceptor, so the plugin can be faked in tests. The
-  access token and cached profile are stored separately in secure storage.
+  repository, token refresher and auth interceptor, so the plugin can be faked
+  in tests. The access token, refresh token and cached profile are stored
+  separately in secure storage.
 - **Routing follows session state.** `GoRouter` redirects `/splash → /login →
   /products` based on `AuthBloc`, with the detail page nested under products.
   The product object is passed as route `extra` for an instant page/hero, while
@@ -132,16 +140,20 @@ Widgets ──events──▶ Bloc ──▶ Repository (domain contract)
 | Purpose | Endpoint |
 | --- | --- |
 | Sign in | `POST /auth/login` |
+| Renew session | `POST /auth/refresh` |
 | Catalogue | `GET /products?limit=12&skip={n}&select=…` |
 | Detail | `GET /products/{id}` |
 
-The login request uses `expiresInMins: 60` (DummyJSON default lifetime).
-DummyJSON has no logout/refresh endpoint, so sign-out and expiry handling are
-local to the app.
+Login and refresh request `expiresInMins: 60`. The refresh token returned by
+login is persisted and exchanged for a new access/refresh pair when a request
+returns `401`. DummyJSON has no logout endpoint, so sign-out is local: both
+tokens and the cached profile are removed from secure storage.
 
 ## Tests
 
-- `AuthBloc`: restore, successful login, rejected login, logout.
+- `AuthBloc`: restore, successful login, rejected login, logout, session expiry.
+- `AuthInterceptor` / `AuthTokenRefresher`: token injection, 401 refresh and
+  replay, parallel-request queueing, rejected and unreachable refresh.
 - `ProductListBloc`: initial load, first-page failure, pagination append, page
   failure, refresh success/failure, end-of-list guard, refresh completer.
 - `ProductDetailBloc`: success and failure.

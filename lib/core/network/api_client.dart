@@ -7,6 +7,8 @@ import '../constants/api_constants.dart';
 import '../error/api_exception.dart';
 import '../storage/auth_storage.dart';
 import 'auth_interceptor.dart';
+import 'auth_token_refresher.dart';
+import 'session_expiry_notifier.dart';
 
 /// Thin wrapper around Dio. It owns configuration, auth and error mapping;
 /// repositories only deal with decoded JSON.
@@ -14,6 +16,8 @@ class ApiClient {
   ApiClient({
     required String baseUrl,
     required AuthStorage authStorage,
+    AuthTokenRefresher? tokenRefresher,
+    SessionExpiryNotifier? sessionExpiry,
     Dio? dio,
   }) : _dio = dio ?? Dio() {
     _dio.options = BaseOptions(
@@ -24,7 +28,15 @@ class ApiClient {
       responseType: ResponseType.json,
       headers: const {'Accept': 'application/json'},
     );
-    _dio.interceptors.add(AuthInterceptor(authStorage));
+    _dio.interceptors.add(
+      AuthInterceptor(
+        authStorage,
+        tokenRefresher ??
+            AuthTokenRefresher.create(baseUrl: baseUrl, storage: authStorage),
+        sessionExpiry ?? SessionExpiryNotifier(),
+        _dio,
+      ),
+    );
     if (kDebugMode) _dio.interceptors.add(_LogInterceptor());
   }
 

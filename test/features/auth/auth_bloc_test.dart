@@ -2,6 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:product_demo/core/error/failure.dart';
+import 'package:product_demo/core/network/session_expiry_notifier.dart';
 import 'package:product_demo/core/utils/result.dart';
 import 'package:product_demo/features/auth/domain/repositories/auth_repository.dart';
 import 'package:product_demo/features/auth/presentation/bloc/auth_bloc.dart';
@@ -96,6 +97,31 @@ void main() {
           const AuthState(status: AuthStatus.authenticated, user: testUser),
       act: (bloc) => bloc.add(const LogoutRequested()),
       expect: () => const [AuthState(status: AuthStatus.unauthenticated)],
+      verify: (_) => verify(() => repository.logout()).called(1),
+    );
+
+    late SessionExpiryNotifier sessionExpiry;
+
+    blocTest<AuthBloc, AuthState>(
+      'signs out when the network layer reports an expired session',
+      build: () {
+        sessionExpiry = SessionExpiryNotifier();
+        addTearDown(sessionExpiry.dispose);
+        when(() => repository.logout()).thenAnswer((_) async {});
+        return AuthBloc(repository, sessionExpiry: sessionExpiry);
+      },
+      seed: () =>
+          const AuthState(status: AuthStatus.authenticated, user: testUser),
+      act: (bloc) async {
+        sessionExpiry.notifyExpired();
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => const [
+        AuthState(
+          status: AuthStatus.unauthenticated,
+          errorMessage: 'Your session expired. Please sign in again.',
+        ),
+      ],
       verify: (_) => verify(() => repository.logout()).called(1),
     );
   });

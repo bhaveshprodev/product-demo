@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 abstract interface class AuthStorage {
   Future<void> writeToken(String token);
   Future<String?> readToken();
+  Future<void> writeRefreshToken(String token);
+  Future<String?> readRefreshToken();
   Future<void> writeUser(String json);
   Future<String?> readUser();
   Future<void> clear();
@@ -15,6 +17,7 @@ class SecureAuthStorage implements AuthStorage {
     : _storage = storage ?? const FlutterSecureStorage();
 
   static const _tokenKey = 'mercato.access_token';
+  static const _refreshTokenKey = 'mercato.refresh_token';
   static const _userKey = 'mercato.user';
 
   final FlutterSecureStorage _storage;
@@ -27,6 +30,13 @@ class SecureAuthStorage implements AuthStorage {
   Future<String?> readToken() => _storage.read(key: _tokenKey);
 
   @override
+  Future<void> writeRefreshToken(String token) =>
+      _storage.write(key: _refreshTokenKey, value: token);
+
+  @override
+  Future<String?> readRefreshToken() => _storage.read(key: _refreshTokenKey);
+
+  @override
   Future<void> writeUser(String json) =>
       _storage.write(key: _userKey, value: json);
 
@@ -36,6 +46,7 @@ class SecureAuthStorage implements AuthStorage {
   @override
   Future<void> clear() async {
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _refreshTokenKey);
     await _storage.delete(key: _userKey);
   }
 }
