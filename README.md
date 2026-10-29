@@ -12,9 +12,14 @@ paginated product catalogue, and a responsive product detail page.
 | --- | --- | --- |
 | ![Login screen](docs/screenshots/login-desktop.png) | ![Product catalogue](docs/screenshots/products-desktop.png) | ![Product detail](docs/screenshots/detail-desktop.png) |
 
-The same layouts adapt down to a two-column phone grid with a full-bleed
-gallery; see `docs/screenshots/*-mobile.png`. Dark mode follows the system
-setting (`docs/screenshots/login-dark.png`).
+### Mobile
+
+| Login | Discover | Product detail |
+| --- | --- | --- |
+| <img src="docs/screenshots/login-mobile.png" width="240" alt="Mobile login" /> | <img src="docs/screenshots/products-mobile.png" width="240" alt="Mobile catalogue" /> | <img src="docs/screenshots/detail-mobile.png" width="240" alt="Mobile product detail" /> |
+
+The phone layout uses a two-column product grid with a full-bleed gallery.
+Dark mode follows the system setting (`docs/screenshots/login-dark.png`).
 
 ## Run it
 
